@@ -33,7 +33,7 @@ const PROBLEMTYPE = {
     // "K2" : 6,
     // "K3" : 7,
     // "K4" : 8,
-    // "HILL" : 9,
+    // "HILL" : 0,
     // "RAILFENCE" : 10
     // "BACONIAN" : 11
 };
@@ -98,6 +98,31 @@ const MORSE = {
 
 var problemAmount = Object.keys(PROBLEMTYPE).length;
 
+function generateCertain(e, type) {
+  e.preventDefault();
+  clearRows();
+  problemType = type;
+  keyTextRef.innerHTML = "";
+  checkButton.disabled = false;
+  if (document.getElementById("polluxAnswer")) {
+    document.getElementById("polluxAnswer").remove();
+  }
+  main();
+  problemTableRef.deleteRow(problemTableRef.rows.length - 1);
+}
+
+function clearRows() {
+  for (var l = 0; l < problemTableRef.rows.length; l++) {
+    problemTableRef.deleteRow(l);
+  }
+  for (var l = 0; l < polluxTableRef.rows.length; l++) {
+    polluxTableRef.deleteRow(l);
+  }
+  textRow = null;
+  solutionRow = null;
+  encryptedQuote = null;
+}
+
 var problemType = Math.floor(problemAmount * Math.random());
 
 var textRow;
@@ -149,6 +174,7 @@ function main() {
 }
 
 var quote;
+var encryptedQuote;
 
 function getQuote() {
     if (problemType == PROBLEMTYPE.ARISTOCRAT || problemType == PROBLEMTYPE.PATRISTOCRAT) {
@@ -347,7 +373,89 @@ function getQuote() {
               textRow.insertCell().innerHTML = encryptedQuote[i];
           }
         }
+      if(problemType == PROBLEMTYPE.HILL) {
+        // get quote
+        var quoteKeys = Object.keys(quotes);
+        var randIndex = Math.floor(Math.random() * quoteKeys.length);
+        var randKey = quoteKeys[randIndex];
+        quote = quotes[randKey].text.toUpperCase();
+        console.log(quote);
 
+        // encrypt key
+        encryptKey = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].sort((a, b) => 0.5 - Math.random()).slice(0, 9);
+        console.log(encryptKey);
+
+        // display key
+        keyTextRef.innerHTML += "\\( \\begin{bmatrix}";
+        for (var i = 0; i < encryptKey.length; i++) {
+          keyTextRef.innerHTML += Object.keys(LETTER).find(key => LETTER[key] == encryptKey[i]);
+          if ((i % 3) != 2) {
+            keyTextRef.innerHTML += "&"
+          } else {
+            if (i != 8) {
+              keyTextRef.innerHTML += "\\\\";
+            }
+          }
+        }
+        keyTextRef.innerHTML += "\\end{bmatrix} \\)";
+        // keyTextRef.innerHTML = "\\( \\begin{bmatrix}1&2&3\\\\4&5&6\\\\7&8&9\\end{bmatrix} \\)";
+
+        // intermediary quote
+        intermediaryQuote = "";
+        var j = 0;
+        for (var i = 0; i < quote.length; i++) {
+            if (!((quote[i].match(symbolRegex) || []).length > 0)) {
+                intermediaryQuote += quote[i];
+                // console.log(Object.keys(LETTER).find(key => LETTER[key] == (LETTER[encryptKey[(i + j) % encryptKey.length]] + LETTER[quote[i]])));
+                // encryptedQuote += Object.keys(LETTER).find(key => LETTER[key] == ((LETTER[encryptKey[(i + j) % encryptKey.length]] + LETTER[quote[i]]) % 26))
+            } else {
+                j--;
+            }
+        }
+        console.log(intermediaryQuote);
+
+        // encrypt quote
+        encryptedQuote = "";
+        var i = 0;
+        for (var i = 0; i < intermediaryQuote.length - 2; i += 3) {
+          var mmRes = matrixMultiply(encryptKey, [LETTER[intermediaryQuote[i]], LETTER[intermediaryQuote[i + 1]], LETTER[intermediaryQuote[i + 2]]]);
+          console.log(mmRes);
+          for (var k = 0; k < 3; k++) {
+            encryptedQuote += Object.keys(LETTER).find(key => LETTER[key] == (mmRes[k] % 26));
+          }
+        }
+        console.log(encryptedQuote);
+
+        console.log(intermediaryQuote.length);
+        console.log(encryptedQuote.length);
+        if (intermediaryQuote.length - encryptedQuote.length > 0) {
+          var appendToEQ = "";
+          for (var i = 0; i < (intermediaryQuote.length - encryptedQuote.length); i++) {
+            appendToEQ += "Z";
+          }
+          encryptedQuote += appendToEQ;
+        }
+        console.log(encryptedQuote);
+
+        // display quote
+        j = 0;
+        for (var i = 0; i < (encryptedQuote.length + Math.floor(encryptedQuote.length / 3)); i++) {
+          if (Math.floor((i + 1) / 4) == ((i + 1) / 4)) {
+              textRow.insertCell().innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+              j--;
+          } else {
+              textRow.insertCell().innerHTML = encryptedQuote[i + j];
+          }
+        }
+      }
+}
+
+function matrixMultiply(m2d, m1d) { // m2d = matrix 2d, m1d = matrix 1d
+  var toReturn = [0, 0, 0];
+  for (var j = 0; j < 9; j++) {
+    toReturn[Math.floor(j / 3)] = toReturn[Math.floor(j / 3)] + (m2d[j] * m1d[j % 3]);
+  }
+  return toReturn;
 }
 
 function getEncryptArrayPollux() {
@@ -375,9 +483,13 @@ function getRandomIDFromArrayPollux(want) {
 }
 
 function setUpInputs() {
-    if (problemType == PROBLEMTYPE.ARISTOCRAT || problemType == PROBLEMTYPE.POLYALPHABETIC) {
+  // r = f34nhiu;
+  if (problemType == PROBLEMTYPE.ARISTOCRAT || problemType == PROBLEMTYPE.POLYALPHABETIC) {
+      console.log(encryptedQuote)
         for (var i = 0; i < encryptedQuote.length; i++) {
-            if ((encryptedQuote[i].match(symbolRegexSpaceless) || []).length > 0) {
+          console.log(i);
+          console.log(solutionRow);
+          if ((encryptedQuote[i].match(symbolRegexSpaceless) || []).length > 0) {
                 solutionRow.insertCell().innerHTML = encryptedQuote[i];
             } else if (encryptedQuote[i] == " ") {
                 solutionRow.insertCell().innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
@@ -411,6 +523,17 @@ function setUpInputs() {
       polluxTableRef.setAttribute("style", "width:" + ((encryptedQuote.length * 35) - 10) + "px");
       polluxRow.insertCell().innerHTML = "<input type = 'text', id = 'polluxCell0', onkeyup = 'updateInputsPollux()', maxlength = '1' style = 'width:" + ((encryptedQuote.length * 35) - 15) + "px'>";
     }
+    if (problemType == PROBLEMTYPE.HILL) {
+      var j = 0;
+      for (var i = 0; i < (encryptedQuote.length + Math.floor(encryptedQuote.length / 3)); i++) {
+          if (Math.floor((i + 1) / 4) == ((i + 1) / 4)) {
+              solutionRow.insertCell().innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+              j--;
+          } else {
+              solutionRow.insertCell().innerHTML = "<input type = 'text', id = 'solutionCell" + i + "', onkeyup = 'updateInputs()', onkeydown = 'keyDown()', maxlength = '1'>";
+          }
+      }
+  }
 }
 
 function findNextFocusAristocrat(r) {
@@ -576,8 +699,8 @@ function updateInputs() {
       // on x press
       if (keys[88]) {
           var currentFocus = Number(document.activeElement.id.replace("solutionCell", ""));
-          if (!((solutionRow.cells[currentFocus + 1].children[0].value == "X" || solutionRow.cells[currentFocus + 1].children[0].value == "x") || (solutionRow.cells[currentFocus - 1].children[0].value == "X" || solutionRow.cells[currentFocus - 1].children[0].value == "x"))) {
-            // no nearby X's
+          if (!((solutionRow.cells[currentFocus + 1].children[0].value.includes("X") || solutionRow.cells[currentFocus + 1].children[0].value.includes("x")) || (solutionRow.cells[currentFocus - 1].children[0].value.includes("X") || solutionRow.cells[currentFocus - 1].children[0].value.includes("x")))) {
+            // no X's in adjacent boxes
             splitPollux(currentFocus);
           } else {
             if (!((solutionRow.cells[currentFocus + 1].children[0].value == "X" || solutionRow.cells[currentFocus + 1].children[0].value == "x") && (solutionRow.cells[currentFocus - 1].children[0].value == "X" || solutionRow.cells[currentFocus - 1].children[0].value == "x"))) {
@@ -639,6 +762,29 @@ function updateInputs() {
           }
         }
       }
+  }
+  if (problemType == PROBLEMTYPE.HILL) {
+    for (var i = 0; i < solutionRow.cells.length; i++) {
+      if (Math.floor((i + 1) / 4) != ((i + 1) / 4)) {
+          solutionRow.cells[i].children[0].value = solutionRow.cells[i].children[0].value.toUpperCase();
+      }
+    }
+    if (keys[39]) {
+        var newFocus = Number(document.activeElement.id.replace("solutionCell", "")) + 1;
+        if (Math.floor((newFocus + 1) / 4) != ((newFocus + 1) / 4)) {
+            solutionRow.cells[newFocus].children[0].focus();
+        } else {
+            solutionRow.cells[newFocus + 1].children[0].focus();
+        }
+    }
+    if (keys[37]) {
+        var newFocus = Number(document.activeElement.id.replace("solutionCell", "")) - 1;
+        if (Math.floor((newFocus + 1) / 4) != ((newFocus + 1) / 4)) {
+            solutionRow.cells[newFocus].children[0].focus();
+        } else {
+            solutionRow.cells[newFocus - 1].children[0].focus();
+        }
+    }
   }
 }
 
@@ -738,10 +884,11 @@ function showAnswer() {
         }
     } else if (problemType == PROBLEMTYPE.POLLUX || problemType == PROBLEMTYPE.MORBIT) {
       var tempp = document.createElement("p");
+      tempp.id = "polluxAnswer";
       tempp.innerHTML = quote;
       checkButton.parentNode.insertBefore(tempp ,checkButton.nextSibling);
     }
-    checkButton.remove();
+    checkButton.disabled = true;
 }
 
 var quotes = [
